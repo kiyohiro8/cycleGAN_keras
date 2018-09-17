@@ -6,7 +6,4 @@ from cycleGAN import  CycleGAN
 if __name__ == "__main__":
     config = Config()
     model = CycleGAN(config)
-    if config.RESUME_TRAIN:
-        model.resume_train()
-    else:
-        model.train()
+    model.inference(model_path=config.MODEL_FILE_PATH,target_dir=config.TARGET_DIR)
