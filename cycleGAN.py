@@ -105,14 +105,15 @@ class CycleGAN():
             image = utils.imread(image_path)
             shape = image.shape
             input_layer = Input(shape=shape)
-            G = net_utils.mapping_function(shape, base_name="G")
+            G = net_utils.mapping_function(shape, base_name="G",
+                                           num_res_blocks=self.config.NUMBER_RESIDUAL_BLOCKS)
             A2B = G(input_layer)
             inference_model = Model(inputs=[input_layer], outputs=[A2B])
             inference_model.load_weights(model_path, by_name=True)
 
             image = np.array([image])
             translated_image =inference_model.predict(image)
-            name = os.path.basename(image_path) + ".png"
+            name = os.path.basename(image_path)
             output_path = os.path.join(output_dir_name, name)
             utils.output_sample_image(output_path, translated_image[0])
 

@@ -73,6 +73,7 @@ def discriminator(input_shape, base_name, num_res_blocks=0,is_wgangp=False, use_
                name=base_name + "_conv2")(D)
     D = BatchNormalization(momentum=0.9, epsilon=1e-5, name=base_name + "_bn1")(D)
     D = LeakyReLU(0.2)(D)
+
     D = Conv2D(256, kernel_size=4, strides=2, padding="same", kernel_initializer=initializer_d,
                use_bias=False,
                name=base_name + "_conv3")(D)
@@ -82,7 +83,7 @@ def discriminator(input_shape, base_name, num_res_blocks=0,is_wgangp=False, use_
     if use_res:
         for i in range(5):
             D = residual_block(D, base_name=base_name, block_num=i,
-                               initializer=initializer_d, is_wgangp=is_wgangp)
+                               initializer=initializer_d, num_channels=256, is_wgangp=is_wgangp)
 
     D = Conv2D(512, kernel_size=4, strides=2, padding="same", kernel_initializer=initializer_d,
                use_bias=False,
@@ -106,13 +107,13 @@ def discriminator(input_shape, base_name, num_res_blocks=0,is_wgangp=False, use_
     return network
 
 
-def residual_block(x, base_name, block_num, initializer, is_wgangp=False):
-    y = Conv2D(128, kernel_size=3, strides=1, padding="same", kernel_initializer=initializer, use_bias=False,
+def residual_block(x, base_name, block_num, initializer, num_channels=128,is_wgangp=False):
+    y = Conv2D(num_channels, kernel_size=3, strides=1, padding="same", kernel_initializer=initializer, use_bias=False,
                name=base_name + "_resblock" + str(block_num) + "_conv1")(x)
     if not is_wgangp:
         y = BatchNormalization(momentum=0.9, epsilon=1e-5, name=base_name + "_resblock" + str(block_num) + "_bn1")(y)
     y = Activation("relu")(y)
-    y = Conv2D(128, kernel_size=3, strides=1, padding="same", kernel_initializer=initializer, use_bias=False,
+    y = Conv2D(num_channels, kernel_size=3, strides=1, padding="same", kernel_initializer=initializer, use_bias=False,
                name=base_name + "_resblock" + str(block_num) + "_conv2")(y)
     if not is_wgangp:
         y = BatchNormalization(momentum=0.9, epsilon=1e-5, name=base_name + "_resblock" + str(block_num) + "_bn2")(y)
