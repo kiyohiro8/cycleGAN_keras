@@ -4,9 +4,8 @@ import os
 
 import numpy as np
 
-from keras.layers import Input, Dense, Activation, Flatten, Add, Lambda
+from keras.layers import Input, Dense, Activation, Flatten, Add, Lambda, Concatenate
 from keras.layers.convolutional import Conv2D, Conv2DTranspose
-from keras.layers.pooling import GlobalAveragePooling2D
 from keras.layers.advanced_activations import LeakyReLU
 from keras.layers.normalization import BatchNormalization
 from keras.engine.network import Network, Layer
@@ -20,6 +19,56 @@ def set_trainable(model, prefix_list, trainable=False):
             if layer.name.startswith(prefix):
                 layer.trainable = trainable
     return model
+
+def mapping_function_Unet(input_shape, base_name, num_res_blocks):
+    initializer = TruncatedNormal(mean=0, stddev=0.2, seed=42)
+    x = in_x = Input(shape=input_shape)
+
+    # size→size//2→size//4→size//8
+    x = Conv2D(32, kernel_size=7, strides=1, padding="same", kernel_initializer=initializer,
+               use_bias=False,
+               name=base_name + "_conv1")(x)
+    x = BatchNormalization(momentum=0.9, epsilon=1e-5, name=base_name + "_bn1")(x)
+    conv1 = LeakyReLU(0.2)(x)
+    x = Conv2D(64, kernel_size=3, strides=2, padding="same", kernel_initializer=initializer,
+               use_bias=False,
+               name=base_name + "_conv2")(conv1)
+    x = BatchNormalization(momentum=0.9, epsilon=1e-5, name=base_name + "_bn2")(x)
+    conv2 = LeakyReLU(0.2)(x)
+    x = Conv2D(128, kernel_size=3, strides=2, padding="same", kernel_initializer=initializer,
+               use_bias=False,
+               name=base_name + "_conv3")(conv2)
+    x = BatchNormalization(momentum=0.9, epsilon=1e-5, name=base_name + "_bn3")(x)
+    conv3 = LeakyReLU(0.2)(x)
+    x = conv3
+
+    for i in range(num_res_blocks):
+        x = residual_block(x, base_name=base_name, block_num=i, initializer=initializer)
+
+    x = Concatenate(axis=3)([x, conv3])
+
+    # size//8→size//4→size//2→size
+    x = Conv2DTranspose(64, kernel_size=3, strides=2, padding='same', kernel_initializer=initializer,
+                        name=base_name + "_deconv2")(x)
+
+    x = BatchNormalization(momentum=0.9, epsilon=1e-5, name=base_name + "_bn6")(x)
+    x = Activation("relu")(x)
+
+    x = Concatenate(axis=3)([x, conv2])
+
+    x = Conv2DTranspose(32, kernel_size=3, strides=2, padding='same', kernel_initializer=initializer,
+                        name=base_name + "_deconv3")(x)
+
+
+    x = BatchNormalization(momentum=0.9, epsilon=1e-5, name=base_name + "_bn7")(x)
+    x = Activation("relu")(x)
+
+    x = Concatenate(axis=3)([x, conv1])
+
+    out = Conv2DTranspose(3, kernel_size=7, strides=1, padding='same', activation="tanh",
+                          kernel_initializer=initializer, name=base_name + "_out")(x)
+    network = Network(in_x, out, name=base_name)
+    return network
 
 def mapping_function(input_shape, base_name, num_res_blocks):
     initializer = TruncatedNormal(mean=0, stddev=0.2, seed=42)
@@ -101,7 +150,7 @@ def discriminator(input_shape, base_name, num_res_blocks=0,is_wgangp=False, use_
         D = Flatten()(D)
         D = Dense(units=128, name=base_name + "_dense1")(D)
         D = LeakyReLU(0.2)(D)
-        out = Dense(units=1, activation="tanh", name=base_name + "_out")(D)
+        out = Dense(units=1, activation=None, name=base_name + "_out")(D)
     network = Network(in_D, out, name=base_name)
 
     return network
